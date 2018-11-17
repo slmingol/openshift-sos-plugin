@@ -6,6 +6,16 @@ GREEN='\e[32m'
 RESET='\e[0m'
 OC_CMD="oc -n $KUBECTL_PLUGINS_CURRENT_NAMESPACE"
 
+OS=$(uname)
+MKTEMP=mktemp
+TAR=tar
+if [ "$OS" == "Darwin" ]; then
+    [ -e /usr/local/bin/gtar ]    || ( echo "gtar missing...exiting" && exit 1 )
+    [ -e /usr/local/bin/gmktemp ] || ( echo "gmktemp missing...exiting" && echo bye )
+    MKTEMP=gmktemp
+    TAR=gtar
+fi
+
 # precheck
 oc whoami &> /dev/null
 if [ $? -ne 0 ]; then
@@ -14,12 +24,13 @@ if [ $? -ne 0 ]; then
 fi
 
 # initialize
-TMP_DIR=$(mktemp -d --suffix=-openshift-sos-plugin)
+
+TMP_DIR=$($MKTEMP -d --suffix=-openshift-sos-plugin)
 DEST=$TMP_DIR/$KUBECTL_PLUGINS_CURRENT_NAMESPACE
 mkdir -p $DEST
 
 # Enable command logging
-exec {BASH_XTRACEFD}>>$DEST/sos.log
+exec ${BASH_XTRACEFD}>>$DEST/sos.log
 set -x
 
 # data capture
@@ -87,7 +98,7 @@ fi
 
 # compress
 DEST_FILE=/tmp/oc-sos-${KUBECTL_PLUGINS_CURRENT_NAMESPACE}-$(date +%Y%m%d-%H%M%S).tar.xz
-tar caf $DEST_FILE -C $TMP_DIR $KUBECTL_PLUGINS_CURRENT_NAMESPACE
+$TAR caf $DEST_FILE -C $TMP_DIR $KUBECTL_PLUGINS_CURRENT_NAMESPACE
 
 echo -e "${GREEN}Data capture complete and archived in ${DEST_FILE}${RESET}"
 
